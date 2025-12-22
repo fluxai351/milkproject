@@ -8,132 +8,181 @@ SUPABASE_URL = st.secrets["SUPABASE_URL"]
 SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- 2. UI SETTINGS & FULL BRANDING HIDE ---
-st.set_page_config(page_title="Dairy Master Pro", page_icon="🥛", layout="centered")
+# --- 2. PROFESSIONAL UI/UX ARCHITECTURE ---
+# Setting Favicon (Browser tab aur home screen icon ke liye)
+st.set_page_config(
+    page_title="Dairy Master Pro", 
+    page_icon="🥛", 
+    layout="centered",
+    initial_sidebar_state="collapsed"
+)
 
 st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* Hide Everything Streamlit */
-        header[data-testid="stHeader"], footer, #MainMenu {visibility: hidden; display: none;}
-        
-        /* Urdu Setup */
-        html, body, [data-testid="stSidebar"], .stMarkdown, .stTextInput, .stNumberInput, .stSelectbox {
-            direction: rtl; text-align: right; font-family: 'Noto Nastaliq Urdu', serif !important;
+        /* FULL BRANDING REMOVAL */
+        header, footer, [data-testid="stHeader"], #MainMenu, .stDeployButton {
+            visibility: hidden !important;
+            display: none !important;
         }
         
-        /* Professional Styling */
-        .block-container { padding-top: 1rem !important; }
+        /* UNIVERSAL ADAPTABILITY & RTL */
+        html, body, [data-testid="stSidebar"], .stMarkdown, p, h1, h2, h3, input, label, .stSelectbox {
+            direction: rtl !important;
+            text-align: right !important;
+            font-family: 'Noto Nastaliq Urdu', serif !important;
+        }
+
+        /* FIXING MOBILE TEXT MIXING & LAYOUT */
+        .block-container {
+            padding-top: 0rem !important;
+            max-width: 550px !important; 
+            margin: auto;
+        }
+
+        @media (max-width: 768px) {
+            [data-testid="column"] {
+                width: 100% !important;
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+                display: block !important;
+            }
+            .stMetric { margin-bottom: 20px !important; }
+        }
+
+        /* NATIVE APP STYLE HEADER */
         .header-box {
             background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
-            color: white; padding: 1.5rem; border-radius: 15px; text-align: center; margin-bottom: 20px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            color: white;
+            padding: 30px 20px;
+            border-radius: 0 0 30px 30px;
+            text-align: center;
+            margin: -1rem -1rem 25px -1rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
-        .report-card {
-            background-color: white; padding: 15px; border-radius: 10px; border-right: 5px solid #075E54;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; color: black;
+
+        /* CARD-BASED UI */
+        .stForm, .card {
+            background: #ffffff !important;
+            padding: 25px !important;
+            border-radius: 20px !important;
+            border: 1px solid #eee !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05) !important;
+            margin-bottom: 20px !important;
         }
-        .stButton>button { background-color: #075E54; color: white; border-radius: 10px; width: 100%; border: none; font-weight: bold;}
-        .stButton>button:hover { background-color: #25D366; color: white; }
+
+        /* PREMIUM TOUCH BUTTONS */
+        .stButton>button {
+            background: linear-gradient(90deg, #075E54 0%, #128C7E 100%) !important;
+            color: white !important;
+            border-radius: 15px !important;
+            height: 60px !important;
+            font-weight: bold !important;
+            font-size: 20px !important;
+            border: none !important;
+            box-shadow: 0 4px 10px rgba(7, 94, 84, 0.3) !important;
+        }
+        
+        /* HIDE STREAMLIT ANCHORS */
+        .st-emotion-cache-15z7884 { display: none !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIN LOGIC ---
-def login_screen():
+# --- 3. LOGIN SYSTEM ---
+def login():
     if "authenticated" not in st.session_state:
-        st.markdown('<div class="header-box"><h1>🔐 لاگ ان کریں</h1></div>', unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([1,4,1])
-        with col2:
-            u = st.text_input("صارف کا نام")
+        st.markdown('<div class="header-box"><h1>🔐 لاگ ان</h1><p style="color:#eee;">ڈیری ماسٹر پرو میں خوش آمدید</p></div>', unsafe_allow_html=True)
+        with st.container():
+            u = st.text_input("یوزر نیم")
             p = st.text_input("پاس ورڈ", type="password")
             if st.button("داخل ہوں"):
                 if u == st.secrets["APP_USERNAME"] and p == st.secrets["APP_PASSWORD"]:
                     st.session_state["authenticated"] = True
                     st.rerun()
                 else:
-                    st.error("❌ غلط صارف یا پاس ورڈ")
+                    st.error("❌ یوزر نیم یا پاس ورڈ درست نہیں ہے۔")
         return False
     return True
 
-# --- 4. MAIN APP CONTENT ---
-if login_screen():
+# --- 4. DATA OPERATIONS ---
+def get_customers():
+    return supabase.table("customers").select("*").execute().data
+
+# --- 5. MAIN APP INTERFACE ---
+if login():
     st.markdown('<div class="header-box"><h1>🥛 ڈیری ماسٹر پرو</h1></div>', unsafe_allow_html=True)
     
-    # Sidebar Logout & Menu
-    if st.sidebar.button("لاگ آؤٹ (Logout)"):
-        del st.session_state["authenticated"]
-        st.rerun()
-
-    page = st.sidebar.selectbox("مینو منتخب کریں", [
-        "--- انتخاب کریں ---", "گاہک کی انٹری", "دودھ کی انٹری", 
+    # Simple & Clean Sidebar Navigation
+    st.sidebar.markdown("### 🛠️ مینو")
+    page = st.sidebar.selectbox("کہاں جانا ہے؟", [
+        "ہوم اسکرین", "گاہک کی انٹری", "دودھ کی انٹری", 
         "رقم کی وصولی", "ونڈے کی انٹری", "اخراجات", 
         "مکمل کھاتہ رپورٹ", "منافع و نقصان"
     ])
-
-    def get_customers():
-        return supabase.table("customers").select("*").execute().data
+    
+    if st.sidebar.button("لاگ آؤٹ"):
+        del st.session_state["authenticated"]
+        st.rerun()
 
     # --- PAGES ---
-    if page == "گاہک کی انٹری":
-        st.subheader("👤 نئے گاہک کا اندراج")
+    if page == "ہوم اسکرین":
+        st.markdown("""
+            <div style="text-align:center; padding: 40px 20px;">
+                <h2 style="color:#075E54;">خوش آمدید!</h2>
+                <p>کام شروع کرنے کے لیے اوپر بائیں ہاتھ والے مینو (Sidebar) پر کلک کریں۔</p>
+            </div>
+        """, unsafe_allow_html=True)
+
+    elif page == "گاہک کی انٹری":
+        st.subheader("👤 نیا گاہک")
         with st.form("c_form", clear_on_submit=True):
-            name = st.text_input("گاہک کا مکمل نام")
-            phone = st.text_input("واٹس ایپ (مثال: 923001234567)")
-            rate = st.number_input("دودھ کا ریٹ (فی لیٹر)", value=200)
+            name = st.text_input("گاہک کا نام")
+            phone = st.text_input("فون نمبر (923...)")
+            rate = st.number_input("دودھ کا ریٹ", value=200)
             if st.form_submit_button("محفوظ کریں"):
-                if name and phone:
-                    supabase.table("customers").insert({"name": name, "phone": phone, "rate": rate}).execute()
-                    st.success("✅ گاہک کا ڈیٹا محفوظ ہو گیا!")
+                supabase.table("customers").insert({"name": name, "phone": phone, "rate": rate}).execute()
+                st.success("گاہک ریکارڈ ہو گیا!")
 
     elif page == "دودھ کی انٹری":
-        st.subheader("🥛 روزانہ دودھ کی انٹری")
+        st.subheader("🥛 روزانہ دودھ")
         custs = get_customers()
         if custs:
             c_dict = {c['name']: c for c in custs}
             s_name = st.selectbox("گاہک منتخب کریں", list(c_dict.keys()))
             with st.form("m_form", clear_on_submit=True):
-                qty = st.number_input("کتنا لیٹر؟", min_value=0.5, step=0.5)
-                if st.form_submit_button("انٹری محفوظ کریں"):
+                qty = st.number_input("لیٹر کی مقدار", min_value=0.5, step=0.5)
+                if st.form_submit_button("محفوظ کریں"):
                     total = qty * c_dict[s_name]['rate']
                     supabase.table("milk_entries").insert({"customer_id": c_dict[s_name]['id'], "quantity": qty, "total_price": total}).execute()
-                    st.success(f"انٹری مکمل! کل بل: {total} Rs")
-                    msg = urllib.parse.quote(f"آج کا دودھ: {qty}L\nٹوٹل: {total}Rs\nشکریہ!")
-                    st.markdown(f'<a href="https://wa.me/{c_dict[s_name]["phone"]}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background-color:#25D366;color:white;padding:10px;border-radius:10px;text-align:center;font-weight:bold;">واٹس ایپ رسید ✅</div></a>', unsafe_allow_html=True)
+                    st.success(f"انٹری مکمل! بل: {total} Rs")
+                    msg = urllib.parse.quote(f"آج کا دودھ: {qty}L\nٹوٹل: {total}Rs")
+                    st.markdown(f'<a href="https://wa.me/{c_dict[s_name]["phone"]}?text={msg}" target="_blank" style="text-decoration:none;"><div style="background-color:#25D366;color:white;padding:15px;border-radius:15px;text-align:center;font-weight:bold;">WhatsApp رسید بھیجیں</div></a>', unsafe_allow_html=True)
 
     elif page == "رقم کی وصولی":
         st.subheader("💸 رقم کی وصولی")
         custs = get_customers()
         if custs:
             c_names = {c['name']: c['id'] for c in custs}
-            s_name = st.selectbox("گاہک منتخب کریں", list(c_names.keys()))
+            s_name = st.selectbox("گاہک", list(c_names.keys()))
             with st.form("p_form", clear_on_submit=True):
                 amt = st.number_input("وصول شدہ رقم", min_value=0)
-                if st.form_submit_button("ادائیگی محفوظ کریں"):
+                if st.form_submit_button("ریکارڈ کریں"):
                     supabase.table("payments").insert({"customer_id": c_names[s_name], "amount_paid": amt}).execute()
-                    st.success("✅ رقم ریکارڈ ہو گئی!")
+                    st.success("رقم وصول ہو گئی!")
 
     elif page == "ونڈے کی انٹری":
-        st.subheader("🌾 ونڈے / چوکر کی انٹری")
+        st.subheader("🌾 ونڈہ انٹری")
         custs = get_customers()
         if custs:
             c_names = {c['name']: c['id'] for c in custs}
             s_name = st.selectbox("گاہک منتخب کریں", list(c_names.keys()))
             with st.form("f_form", clear_on_submit=True):
                 item = st.text_input("آئٹم کا نام")
-                qty = st.number_input("مقدار (بوری/کلو)", min_value=1.0)
+                qty = st.number_input("مقدار", min_value=1.0)
                 price = st.number_input("کل قیمت", min_value=0)
-                if st.form_submit_button("ونڈہ محفوظ کریں"):
+                if st.form_submit_button("محفوظ کریں"):
                     supabase.table("feed_entries").insert({"customer_id": c_names[s_name], "feed_name": item, "feed_qty": qty, "feed_price": price}).execute()
-                    st.success("✅ انٹری محفوظ ہو گئی!")
-
-    elif page == "اخراجات":
-        st.subheader("📉 فارم کے اخراجات")
-        with st.form("e_form", clear_on_submit=True):
-            t = st.text_input("خرچے کی تفصیل (بجلی، پٹرول، مزدوری)")
-            a = st.number_input("رقم", min_value=0)
-            if st.form_submit_button("خرچہ محفوظ کریں"):
-                supabase.table("expenses").insert({"title": t, "amount": a}).execute()
-                st.success("✅ ریکارڈ ہو گیا!")
+                    st.success("فیڈ انٹری محفوظ!")
 
     elif page == "مکمل کھاتہ رپورٹ":
         st.subheader("📊 تفصیلی کھاتہ")
@@ -146,21 +195,24 @@ if login_screen():
             p = sum(x['amount_paid'] for x in supabase.table("payments").select("amount_paid").eq("customer_id", cid).execute().data)
             f = sum(x['feed_price'] for x in supabase.table("feed_entries").select("feed_price").eq("customer_id", cid).execute().data)
             bal = (m + f) - p
-            st.markdown(f'<div class="report-card">ٹوٹل دودھ بل: {m} Rs</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="report-card">ٹوٹل ونڈہ بل: {f} Rs</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="report-card">ٹوٹل وصول شدہ رقم: {p} Rs</div>', unsafe_allow_html=True)
-            color = "#ff4b4b" if bal > 0 else "#25D366"
-            st.markdown(f'<div style="background:{color}; color:white; padding:20px; border-radius:15px; text-align:center;"><h3>باقیہ رقم (Balance): {bal} Rs</h3></div>', unsafe_allow_html=True)
+            
+            st.markdown(f"""
+                <div style="background:#f9f9f9; padding:20px; border-radius:15px; border-right:10px solid #075E54; margin-bottom:20px;">
+                    <p style="font-size:18px;">کل دودھ بل: <b>{m} Rs</b></p>
+                    <p style="font-size:18px;">کل ونڈہ بل: <b>{f} Rs</b></p>
+                    <p style="font-size:18px;">ٹوٹل وصولی: <b>{p} Rs</b></p>
+                    <hr>
+                    <h2 style="color:{'#d9534f' if bal > 0 else '#5cb85c'}; text-align:center;">باقیہ: {bal} Rs</h2>
+                </div>
+            """, unsafe_allow_html=True)
 
     elif page == "منافع و نقصان":
         st.subheader("📈 کاروبار کا خلاصہ")
         all_m = sum(x['total_price'] for x in supabase.table("milk_entries").select("total_price").execute().data)
         all_f = sum(x['feed_price'] for x in supabase.table("feed_entries").select("feed_price").execute().data)
         all_e = sum(x['amount'] for x in supabase.table("expenses").select("amount").execute().data)
-        total_income = all_m + all_f
-        st.metric("ٹوٹل آمدن", f"{total_income} Rs")
+        
+        st.metric("ٹوٹل آمدن", f"{all_m + all_f} Rs")
         st.metric("ٹوٹل اخراجات", f"{all_e} Rs")
-        st.success(f"خالص منافع: {total_income - all_e} Rs")
-
-    else:
-        st.info("بائیں مینو سے کوئی آپشن منتخب کریں تاکہ کام شروع کیا جا سکے۔")
+        profit = (all_m + all_f) - all_e
+        st.markdown(f'<div style="text-align:center; padding:20px; background:#e8f5e9; border-radius:15px;"><h3>خالص منافع: {profit} Rs</h3></div>', unsafe_allow_html=True)
