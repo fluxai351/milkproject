@@ -4,8 +4,10 @@ import urllib.parse
 import pandas as pd
 
 # --- 1. CONFIGURATION ---
-SUPABASE_URL = "https://glohhdwhcbgaahmxqhkb.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdsb2hoZHdoY2JnYWFobXhxaGtiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYzOTY1NzEsImV4cCI6MjA4MTk3MjU3MX0.WyGE8ctBT8tbz-Lt02yflJSDtsApq2kDY0j5_wQMMWg"
+# Nayi safe lines (Ye Streamlit ke secret manager se keys uthayega)
+SUPABASE_URL = st.secrets["SUPABASE_URL"]
+SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # Page Setup
