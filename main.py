@@ -1,187 +1,169 @@
 import streamlit as st
-from supabase import create_client
-import pandas as pd
-import urllib.parse
 
-# ======================================================
-# APP CONFIG
-# ======================================================
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Dairy Master Pro",
-    page_icon="🥛",
-    layout="wide"
+    layout="centered",
+    initial_sidebar_state="collapsed"
 )
 
-# ======================================================
-# GLOBAL STYLES (PRO UI)
-# ======================================================
-st.markdown("""
-<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-<style>
-#MainMenu, footer, header {visibility:hidden;}
+# ---------------- GLOBAL CSS ----------------
+st.markdown(
+    """
+    <style>
+    /* Hide Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
 
-html, body, [data-testid="stSidebar"], .stMarkdown, p, h1, h2, h3, input, label {
-    direction: rtl;
-    text-align: right;
-    font-family: 'Noto Nastaliq Urdu', serif;
-}
+    body {
+        background-color: #f5f7fa;
+    }
 
-/* Centered container */
-.center-box {
-    max-width: 420px;
-    margin: auto;
-    margin-top: 10vh;
-}
+    .center-box {
+        max-width: 420px;
+        margin: auto;
+        margin-top: 12vh;
+    }
 
-/* Card */
-.card {
-    background: white;
-    padding: 28px;
-    border-radius: 18px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
-}
+    .card {
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+    }
 
-/* Header */
-.app-header {
-    background: linear-gradient(135deg,#075E54,#128C7E);
-    color: white;
-    padding: 22px;
-    border-radius: 18px;
-    text-align: center;
-    margin-bottom: 25px;
-}
+    .app-header {
+        background: linear-gradient(135deg, #075E54, #128C7E);
+        color: white;
+        padding: 24px;
+        border-radius: 16px;
+        text-align: center;
+        margin-bottom: 28px;
+    }
 
-/* Buttons */
-.stButton button {
-    background: #075E54;
-    color: white;
-    border-radius: 12px;
-    height: 48px;
-    font-size: 16px;
-    font-weight: bold;
-}
-</style>
-""", unsafe_allow_html=True)
+    .app-header h2 {
+        margin: 0;
+        font-size: 26px;
+        font-weight: 700;
+    }
 
-# ======================================================
-# SUPABASE
-# ======================================================
-@st.cache_resource
-def supabase_client():
-    return create_client(
-        st.secrets["SUPABASE_URL"],
-        st.secrets["SUPABASE_KEY"]
-    )
+    .app-header p {
+        margin-top: 6px;
+        font-size: 14px;
+        opacity: 0.9;
+    }
 
-supabase = supabase_client()
+    .stTextInput input {
+        height: 48px;
+        border-radius: 12px;
+        font-size: 15px;
+    }
 
-# ======================================================
-# LOGIN SCREEN (COMPLETELY REDESIGNED)
-# ======================================================
-def login_screen():
+    .stButton button {
+        width: 100%;
+        height: 48px;
+        border-radius: 14px;
+        background-color: #075E54;
+        color: white;
+        font-size: 16px;
+        font-weight: 700;
+        border: none;
+    }
+
+    .stButton button:hover {
+        background-color: #064c45;
+    }
+
+    .error-msg {
+        color: #c0392b;
+        text-align: center;
+        margin-top: 10px;
+        font-size: 14px;
+    }
+
+    .dashboard {
+        max-width: 1000px;
+        margin: auto;
+        margin-top: 40px;
+    }
+
+    .dashboard h1 {
+        color: #075E54;
+        font-size: 32px;
+        font-weight: 700;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ---------------- SESSION STATE ----------------
+if "logged_in" not in st.session_state:
+    st.session_state.logged_in = False
+
+# ---------------- AUTH ----------------
+VALID_USER = "admin"
+VALID_PASS = "1234"
+
+# ---------------- LOGIN SCREEN ----------------
+if not st.session_state.logged_in:
+
     st.markdown('<div class="center-box">', unsafe_allow_html=True)
-    st.markdown("""
-        <div class="card">
-            <div class="app-header">
-                <h2>🥛 Dairy Master Pro</h2>
-                <p>محفوظ لاگ ان</p>
-            </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+
+    st.markdown(
+        """
+        <div class="app-header">
+            <h2>🥛 Dairy Master Pro</h2>
+            <p>محفوظ لاگ ان</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
     username = st.text_input("صارف کا نام", placeholder="مثلاً: admin")
     password = st.text_input("پاس ورڈ", type="password", placeholder="••••••")
 
-    if st.button("لاگ ان کریں"):
-        if (
-            username == st.secrets["APP_USERNAME"] and
-            password == st.secrets["APP_PASSWORD"]
-        ):
-            st.session_state.authenticated = True
+    login_clicked = st.button("لاگ ان کریں")
+
+    if login_clicked:
+        if username == VALID_USER and password == VALID_PASS:
+            st.session_state.logged_in = True
             st.rerun()
         else:
-            st.error("❌ غلط لاگ ان معلومات")
+            st.markdown(
+                '<div class="error-msg">غلط صارف کا نام یا پاس ورڈ</div>',
+                unsafe_allow_html=True
+            )
 
-    st.markdown("</div></div>", unsafe_allow_html=True)
+    st.markdown('</div></div>', unsafe_allow_html=True)
 
-if not st.session_state.get("authenticated"):
-    login_screen()
-    st.stop()
+# ---------------- DASHBOARD ----------------
+else:
+    st.markdown('<div class="dashboard">', unsafe_allow_html=True)
 
-# ======================================================
-# MAIN APP HEADER
-# ======================================================
-st.markdown("""
-<div class="app-header">
-    <h1>🥛 ڈیری ماسٹر پرو</h1>
-    <p>دودھ، ونڈہ، رقم اور منافع کا مکمل نظام</p>
-</div>
-""", unsafe_allow_html=True)
+    st.markdown("<h1>خوش آمدید 👋</h1>", unsafe_allow_html=True)
+    st.write("یہ آپ کا **Dairy Master Pro** ڈیش بورڈ ہے۔")
 
-# ======================================================
-# SIDEBAR
-# ======================================================
-st.sidebar.title("📋 مینو")
-page = st.sidebar.radio(
-    "انتخاب کریں",
-    ["ہوم", "گاہک", "دودھ", "رقم", "ونڈہ", "اخراجات", "کھاتہ", "منافع"]
-)
+    col1, col2, col3 = st.columns(3)
 
-st.sidebar.markdown("---")
-if st.sidebar.button("🚪 لاگ آؤٹ"):
-    st.session_state.clear()
-    st.rerun()
+    with col1:
+        st.metric("آج کی دودھ خرید", "1,250 لیٹر")
 
-# ======================================================
-# DATA
-# ======================================================
-@st.cache_data(ttl=300)
-def customers():
-    return supabase.table("customers").select("*").execute().data
+    with col2:
+        st.metric("کل فروخت", "₨ 312,500")
 
-cust = customers()
-cust_map = {c["name"]: c for c in cust} if cust else {}
+    with col3:
+        st.metric("بقایا رقم", "₨ 58,000")
 
-# ======================================================
-# PAGES
-# ======================================================
-if page == "ہوم":
-    st.success("خوش آمدید! بائیں جانب مینو سے کام منتخب کریں۔")
+    st.divider()
 
-elif page == "گاہک":
-    with st.container():
-        st.subheader("👤 نیا گاہک")
-        with st.form("cust"):
-            name = st.text_input("نام")
-            phone = st.text_input("واٹس ایپ نمبر")
-            rate = st.number_input("دودھ ریٹ", value=200)
-            if st.form_submit_button("محفوظ کریں"):
-                supabase.table("customers").insert({
-                    "name": name, "phone": phone, "rate": rate
-                }).execute()
-                st.success("✅ گاہک محفوظ ہو گیا")
+    st.subheader("سسٹم ایکشنز")
 
-elif page == "دودھ" and cust_map:
-    cname = st.selectbox("گاہک منتخب کریں", cust_map.keys())
-    with st.form("milk"):
-        qty = st.number_input("لیٹر", min_value=0.1)
-        if st.form_submit_button("سیو کریں"):
-            total = qty * cust_map[cname]["rate"]
-            supabase.table("milk_entries").insert({
-                "customer_id": cust_map[cname]["id"],
-                "quantity": qty,
-                "total_price": total
-            }).execute()
-            st.success("🥛 دودھ محفوظ")
+    if st.button("لاگ آؤٹ"):
+        st.session_state.logged_in = False
+        st.rerun()
 
-elif page == "منافع":
-    milk = supabase.table("milk_entries").select("total_price").execute().data
-    feed = supabase.table("feed_entries").select("feed_price").execute().data
-    exp = supabase.table("expenses").select("amount").execute().data
-
-    income = sum(x["total_price"] for x in milk) + sum(x["feed_price"] for x in feed)
-    expenses = sum(x["amount"] for x in exp)
-
-    st.metric("کل آمدن", f"{income} Rs")
-    st.metric("کل اخراجات", f"{expenses} Rs")
-    st.metric("خالص نتیجہ", f"{income-expenses} Rs")
+    st.markdown('</div>', unsafe_allow_html=True)
 
