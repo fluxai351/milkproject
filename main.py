@@ -1,194 +1,264 @@
+# =========================================================
+# 🥛 DAIRY MASTER PRO — PRODUCTION BUILD
+# Senior-Optimized | Urdu RTL | Supabase Backend
+# =========================================================
+
 import streamlit as st
 from supabase import create_client
 import urllib.parse
 import pandas as pd
 
-# --- 1. CONFIGURATION ---
-SUPABASE_URL = st.secrets["SUPABASE_URL"]
-SUPABASE_KEY = st.secrets["SUPABASE_KEY"]
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# =========================================================
+# 1. APP CONFIG (NO STREAMLIT BRANDING)
+# =========================================================
 
-# --- 2. UNIVERSAL UI/UX FIX ---
-st.set_page_config(page_title="Dairy Master Pro", page_icon="🥛", layout="wide")
+st.set_page_config(
+    page_title="Dairy Master Pro",
+    page_icon="🥛",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =========================================================
+# 2. GLOBAL STYLING (RTL + HIDE STREAMLIT/GITHUB)
+# =========================================================
 
 st.markdown("""
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        header, footer, #MainMenu {visibility: hidden; display: none;}
-        html, body, [data-testid="stSidebar"], .stMarkdown, p, h1, h2, h3, input, label {
-            direction: rtl !important; text-align: right !important;
-            font-family: 'Noto Nastaliq Urdu', serif !important;
-        }
-        .main .block-container { max-width: 800px !important; padding-top: 1rem !important; }
-        .header-box {
-            background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
-            color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 25px;
-        }
-        .report-card {
-            background-color: #ffffff; padding: 20px; border-radius: 12px;
-            border-right: 8px solid #075E54; box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-            margin-bottom: 15px; color: #333;
-        }
-        .stButton>button {
-            background-color: #075E54 !important; color: white !important;
-            border-radius: 10px !important; width: 100% !important; height: 50px; font-weight: bold;
-        }
-    </style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* Hide Streamlit & GitHub branding */
+#MainMenu, footer, header {visibility: hidden;}
+a[href*="github"], a[href*="streamlit"] {display:none !important;}
+
+/* RTL + Urdu */
+html, body, [data-testid="stSidebar"], .stMarkdown, p, h1, h2, h3, h4, input, label {
+    direction: rtl !important;
+    text-align: right !important;
+    font-family: 'Noto Nastaliq Urdu', serif !important;
+}
+
+/* Layout */
+.main .block-container {
+    max-width: 900px;
+    padding-top: 1rem;
+}
+
+/* Header */
+.header-box {
+    background: linear-gradient(135deg, #075E54, #128C7E);
+    color: white;
+    padding: 22px;
+    border-radius: 16px;
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+/* Cards */
+.report-card {
+    background: white;
+    padding: 20px;
+    border-radius: 12px;
+    border-right: 8px solid #075E54;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    margin-bottom: 12px;
+    color: #333;
+}
+
+/* Buttons */
+.stButton > button {
+    background-color: #075E54 !important;
+    color: white !important;
+    border-radius: 12px;
+    width: 100%;
+    height: 48px;
+    font-weight: bold;
+    font-size: 16px;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# --- 3. LOGIN ---
-if "authenticated" not in st.session_state:
-    st.markdown('<div class="header-box"><h1>🔐 لاگ ان</h1></div>', unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        u = st.text_input("صارف کا نام")
-        p = st.text_input("پاس ورڈ", type="password")
-        if st.button("داخل ہوں"):
-            if u == st.secrets["APP_USERNAME"] and p == st.secrets["APP_PASSWORD"]:
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("غلط پاس ورڈ")
-    st.stop()
+# =========================================================
+# 3. SUPABASE CLIENT (CACHED)
+# =========================================================
 
-# --- 4. APP START ---
+@st.cache_resource
+def get_supabase():
+    return create_client(
+        st.secrets["SUPABASE_URL"],
+        st.secrets["SUPABASE_KEY"]
+    )
+
+supabase = get_supabase()
+
+# =========================================================
+# 4. AUTHENTICATION (SECURE & CLEAN)
+# =========================================================
+
+def login_guard():
+    if not st.session_state.get("authenticated"):
+        st.markdown('<div class="header-box"><h1>🔐 لاگ ان</h1></div>', unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([1,2,1])
+        with col2:
+            username = st.text_input("صارف کا نام")
+            password = st.text_input("پاس ورڈ", type="password")
+            if st.button("داخل ہوں"):
+                if (
+                    username == st.secrets["APP_USERNAME"] and
+                    password == st.secrets["APP_PASSWORD"]
+                ):
+                    st.session_state.authenticated = True
+                    st.rerun()
+                else:
+                    st.error("غلط معلومات")
+        st.stop()
+
+login_guard()
+
+# =========================================================
+# 5. DATA ACCESS LAYER
+# =========================================================
+
+@st.cache_data(ttl=300)
+def fetch_customers():
+    return supabase.table("customers").select("id,name,phone,rate").execute().data
+
+def safe_insert(table, data):
+    try:
+        supabase.table(table).insert(data).execute()
+        return True
+    except Exception:
+        st.error("ڈیٹا محفوظ نہیں ہو سکا")
+        return False
+
+@st.cache_data(ttl=120)
+def customer_ledger(cid):
+    milk = supabase.table("milk_entries").select("total_price").eq("customer_id", cid).execute().data
+    pay = supabase.table("payments").select("amount_paid").eq("customer_id", cid).execute().data
+    feed = supabase.table("feed_entries").select("feed_price").eq("customer_id", cid).execute().data
+
+    return (
+        sum(x["total_price"] for x in milk),
+        sum(x["feed_price"] for x in feed),
+        sum(x["amount_paid"] for x in pay)
+    )
+
+@st.cache_data(ttl=120)
+def profit_loss():
+    milk = supabase.table("milk_entries").select("total_price").execute().data
+    feed = supabase.table("feed_entries").select("feed_price").execute().data
+    exp = supabase.table("expenses").select("amount").execute().data
+
+    income = sum(x["total_price"] for x in milk) + sum(x["feed_price"] for x in feed)
+    expenses = sum(x["amount"] for x in exp)
+    return income, expenses
+
+# =========================================================
+# 6. APP HEADER + SIDEBAR
+# =========================================================
+
 st.markdown('<div class="header-box"><h1>🥛 ڈیری ماسٹر پرو</h1></div>', unsafe_allow_html=True)
 
-st.sidebar.title("مینو")
-page = st.sidebar.radio("انتخاب کریں:", 
-    ["ہوم اسکرین", "گاہک کی انٹری", "دودھ کی انٹری", "رقم کی وصولی", "ونڈے کی انٹری", "اخراجات", "مکمل کھاتہ رپورٹ", "منافع و نقصان"])
+st.sidebar.title("📋 مینو")
+page = st.sidebar.radio(
+    "انتخاب کریں:",
+    ["ہوم", "گاہک", "دودھ", "رقم", "ونڈہ", "اخراجات", "کھاتہ", "منافع / نقصان"]
+)
 
 if st.sidebar.button("لاگ آؤٹ"):
-    del st.session_state["authenticated"]
+    st.session_state.clear()
     st.rerun()
 
-def get_customers():
-    return supabase.table("customers").select("*").execute().data
+customers = fetch_customers()
+cust_map = {c["name"]: c for c in customers} if customers else {}
 
-# --- PAGES ---
-if page == "ہوم اسکرین":
-    st.write("### خوش آمدید!")
-    st.info("بائیں طرف موجود مینو سے کسی بھی آپشن کا انتخاب کریں۔")
+# =========================================================
+# 7. PAGES
+# =========================================================
 
-elif page == "گاہک کی انٹری":
-    st.write("### 👤 نیا گاہک")
-    with st.form("c_form", clear_on_submit=True):
+if page == "ہوم":
+    st.success("خوش آمدید! بائیں طرف مینو سے آپشن منتخب کریں۔")
+
+elif page == "گاہک":
+    with st.form("customer_form", clear_on_submit=True):
         name = st.text_input("نام")
         phone = st.text_input("واٹس ایپ نمبر (923...)")
-        rate = st.number_input("دودھ کا ریٹ", value=200)
+        rate = st.number_input("دودھ ریٹ", min_value=1, value=200)
+        if st.form_submit_button("محفوظ کریں") and name and phone:
+            if safe_insert("customers", {"name": name, "phone": phone, "rate": rate}):
+                st.success("گاہک محفوظ ہو گیا")
+
+elif page == "دودھ" and cust_map:
+    cname = st.selectbox("گاہک", cust_map.keys())
+    with st.form("milk_form", clear_on_submit=True):
+        qty = st.number_input("لیٹر", min_value=0.1, step=0.1)
+        if st.form_submit_button("سیو کریں"):
+            total = qty * cust_map[cname]["rate"]
+            if safe_insert("milk_entries", {
+                "customer_id": cust_map[cname]["id"],
+                "quantity": qty,
+                "total_price": total
+            }):
+                st.success("دودھ محفوظ")
+                msg = urllib.parse.quote(f"دودھ: {qty}L\nبل: {total}Rs")
+                st.markdown(f"[واٹس ایپ رسید](https://wa.me/{cust_map[cname]['phone']}?text={msg})")
+
+elif page == "رقم" and cust_map:
+    cname = st.selectbox("گاہک", cust_map.keys())
+    with st.form("pay_form", clear_on_submit=True):
+        amt = st.number_input("رقم", min_value=1)
         if st.form_submit_button("محفوظ کریں"):
-            if name and phone:
-                supabase.table("customers").insert({"name": name, "phone": phone, "rate": rate}).execute()
-                st.success(f"گاہک {name} محفوظ ہو گیا!")
+            if safe_insert("payments", {"customer_id": cust_map[cname]["id"], "amount_paid": amt}):
+                st.success("رقم محفوظ")
 
-elif page == "دودھ کی انٹری":
-    st.write("### 🥛 روزانہ دودھ کی انٹری")
-    custs = get_customers()
-    if custs:
-        c_dict = {c['name']: c for c in custs}
-        s_name = st.selectbox("گاہک منتخب کریں", list(c_dict.keys()))
-        with st.form("m_form", clear_on_submit=True):
-            qty = st.number_input("مقدار (لیٹر)", min_value=0.1, step=0.1)
-            if st.form_submit_button("سیو کریں"):
-                total = qty * c_dict[s_name]['rate']
-                supabase.table("milk_entries").insert({"customer_id": c_dict[s_name]['id'], "quantity": qty, "total_price": total}).execute()
-                st.success("انٹری مکمل!")
-                msg = urllib.parse.quote(f"آج کا دودھ: {qty}L\nبل: {total}Rs")
-                st.markdown(f'[واٹس ایپ رسید بھیجیں](https://wa.me/{c_dict[s_name]["phone"]}?text={msg})')
+elif page == "ونڈہ" and cust_map:
+    cname = st.selectbox("گاہک", cust_map.keys())
+    with st.form("feed_form", clear_on_submit=True):
+        item = st.text_input("آئٹم")
+        qty = st.number_input("مقدار", min_value=1.0)
+        price = st.number_input("قیمت", min_value=1)
+        if st.form_submit_button("محفوظ کریں") and item:
+            safe_insert("feed_entries", {
+                "customer_id": cust_map[cname]["id"],
+                "feed_name": item,
+                "feed_qty": qty,
+                "feed_price": price
+            })
+            st.success("ونڈہ محفوظ")
 
-elif page == "رقم کی وصولی":
-    st.write("### 💸 رقم کی وصولی")
-    custs = get_customers()
-    if custs:
-        c_ids = {c['name']: c['id'] for c in custs}
-        s_name = st.selectbox("گاہک منتخب کریں", list(c_ids.keys()))
-        with st.form("p_form", clear_on_submit=True):
-            amt = st.number_input("وصول شدہ رقم", min_value=0)
-            if st.form_submit_button("محفوظ کریں"):
-                supabase.table("payments").insert({"customer_id": c_ids[s_name], "amount_paid": amt}).execute()
-                st.success("ادائیگی ریکارڈ ہو گئی!")
-
-# --- 1. ونڈے کی انٹری (Functional) ---
-elif page == "ونڈے کی انٹری":
-    st.write("### 🌾 ونڈہ / چوکر کی انٹری")
-    custs = get_customers()
-    if custs:
-        c_ids = {c['name']: c['id'] for c in custs}
-        s_name = st.selectbox("گاہک منتخب کریں", list(c_ids.keys()))
-        with st.form("f_form", clear_on_submit=True):
-            f_item = st.text_input("آئٹم کا نام (مثلاً: ونڈہ، بنولہ)")
-            f_qty = st.number_input("مقدار (بوری/کلو)", min_value=1.0)
-            f_price = st.number_input("کل قیمت", min_value=0)
-            if st.form_submit_button("ریکارڈ محفوظ کریں"):
-                if f_item and f_price > 0:
-                    supabase.table("feed_entries").insert({
-                        "customer_id": c_ids[s_name], 
-                        "feed_name": f_item, 
-                        "feed_qty": f_qty, 
-                        "feed_price": f_price
-                    }).execute()
-                    st.success(f"{f_item} کی انٹری محفوظ ہو گئی!")
-
-# --- 2. اخراجات (Functional) ---
 elif page == "اخراجات":
-    st.write("### 📉 فارم کے اخراجات")
-    with st.form("e_form", clear_on_submit=True):
-        e_title = st.text_input("خرچے کی تفصیل (مثلاً: بجلی بل، مزدوری)")
-        e_amt = st.number_input("رقم", min_value=0)
-        if st.form_submit_button("خرچہ سیو کریں"):
-            if e_title and e_amt > 0:
-                supabase.table("expenses").insert({"title": e_title, "amount": e_amt}).execute()
-                st.success("خرچہ ریکارڈ کر لیا گیا!")
+    with st.form("exp_form", clear_on_submit=True):
+        title = st.text_input("تفصیل")
+        amt = st.number_input("رقم", min_value=1)
+        if st.form_submit_button("سیو کریں") and title:
+            safe_insert("expenses", {"title": title, "amount": amt})
+            st.success("خرچہ محفوظ")
 
-elif page == "مکمل کھاتہ رپورٹ":
-    st.write("### 📊 تفصیلی کھاتہ")
-    custs = get_customers()
-    if custs:
-        c_dict = {c['name']: c['id'] for c in custs}
-        s_name = st.selectbox("گاہک منتخب کریں", list(c_dict.keys()))
-        cid = c_dict[s_name]
-        
-        m_data = supabase.table("milk_entries").select("total_price").eq("customer_id", cid).execute().data
-        p_data = supabase.table("payments").select("amount_paid").eq("customer_id", cid).execute().data
-        f_data = supabase.table("feed_entries").select("feed_price").eq("customer_id", cid).execute().data
-        
-        m_total = sum(x['total_price'] for x in m_data)
-        p_total = sum(x['amount_paid'] for x in p_data)
-        f_total = sum(x['feed_price'] for x in f_data)
-        balance = (m_total + f_total) - p_total
-        
-        st.markdown(f'<div class="report-card">دودھ بل: {m_total} Rs</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="report-card">ونڈہ بل: {f_total} Rs</div>', unsafe_allow_html=True)
-        st.markdown(f'<div class="report-card">ٹوٹل وصولی: {p_total} Rs</div>', unsafe_allow_html=True)
-        color = "#ff4b4b" if balance > 0 else "#25D366"
-        st.markdown(f'<div style="text-align:center; background:{color}; color:white; padding:15px; border-radius:10px;"><h3>باقیہ رقم: {balance} Rs</h3></div>', unsafe_allow_html=True)
+elif page == "کھاتہ" and cust_map:
+    cname = st.selectbox("گاہک", cust_map.keys())
+    milk, feed, pay = customer_ledger(cust_map[cname]["id"])
+    balance = (milk + feed) - pay
 
-# --- 3. منافع و نقصان (Functional) ---
-elif page == "منافع و نقصان":
-    st.write("### 📈 نفع و نقصان کی رپورٹ")
-    
-    # Calculation
-    milk_rev = sum(x['total_price'] for x in supabase.table("milk_entries").select("total_price").execute().data)
-    feed_rev = sum(x['feed_price'] for x in supabase.table("feed_entries").select("feed_price").execute().data)
-    total_expenses = sum(x['amount'] for x in supabase.table("expenses").select("amount").execute().data)
-    
-    total_income = milk_rev + feed_rev
-    net_profit = total_income - total_expenses
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("ٹوٹل آمدن (دودھ + ونڈہ)", f"{total_income} Rs")
-    with col2:
-        st.metric("ٹوٹل اخراجات", f"{total_expenses} Rs")
-        
-    if net_profit >= 0:
-        st.success(f"خالص منافع: {net_profit} Rs")
+    st.markdown(f'<div class="report-card">دودھ بل: {milk} Rs</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="report-card">ونڈہ بل: {feed} Rs</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="report-card">وصولی: {pay} Rs</div>', unsafe_allow_html=True)
+
+    color = "#ff4b4b" if balance > 0 else "#25D366"
+    st.markdown(
+        f'<div style="background:{color};color:white;padding:15px;border-radius:12px;text-align:center">'
+        f'<h3>بقایا: {balance} Rs</h3></div>',
+        unsafe_allow_html=True
+    )
+
+elif page == "منافع / نقصان":
+    income, expenses = profit_loss()
+    net = income - expenses
+
+    st.metric("کل آمدن", f"{income} Rs")
+    st.metric("کل اخراجات", f"{expenses} Rs")
+
+    if net >= 0:
+        st.success(f"خالص منافع: {net} Rs")
     else:
-        st.error(f"خالص نقصان: {abs(net_profit)} Rs")
-    
-    st.write("---")
-    st.write("#### اخراجات کی تفصیل")
-    exp_list = supabase.table("expenses").select("*").execute().data
-    if exp_list:
-        st.table(pd.DataFrame(exp_list)[['title', 'amount', 'created_at']])
+        st.error(f"خالص نقصان: {abs(net)} Rs")
 
