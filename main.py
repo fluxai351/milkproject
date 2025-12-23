@@ -191,4 +191,3 @@ elif page == "منافع و نقصان":
     exp_list = supabase.table("expenses").select("*").execute().data
     if exp_list:
         st.table(pd.DataFrame(exp_list)[['title', 'amount', 'created_at']])
-
